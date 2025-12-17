@@ -1,0 +1,754 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ReportFlow Design System - Professional Document Platform */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Deep slate primary - professional and trustworthy */
+    --primary: 222 47% 20%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Soft slate secondary */
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 222 47% 20%;
+
+    /* Muted tones */
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Warm amber accent - for CTAs and highlights */
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Success/Info states */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 47% 20%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar - subtle differentiation */
+    --sidebar-background: 220 20% 97%;
+    --sidebar-foreground: 222 47% 20%;
+    --sidebar-primary: 222 47% 20%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 38 92% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 222 47% 20%;
+
+    /* Editor specific */
+    --editor-bg: 0 0% 100%;
+    --editor-border: 220 13% 88%;
+    --editor-selection: 38 92% 50% / 0.15;
+
+    /* Typography */
+    --font-sans: "Inter", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+
+    /* Shadows */
+    --shadow-xs: 0 1px 2px hsl(222 47% 11% / 0.04);
+    --shadow-sm: 0 2px 4px hsl(222 47% 11% / 0.06);
+    --shadow-md: 0 4px 12px hsl(222 47% 11% / 0.08);
+    --shadow-lg: 0 8px 24px hsl(222 47% 11% / 0.12);
+    --shadow-glow: 0 0 20px hsl(38 92% 50% / 0.25);
+
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 38 92% 50%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 222 33% 18%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 222 33% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 33% 20%;
+    --input: 222 33% 20%;
+    --ring: 38 92% 50%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 92%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 33% 18%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 33% 18%;
+    --sidebar-ring: 38 92% 50%;
+
+    --editor-bg: 222 47% 10%;
+    --editor-border: 222 33% 18%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  /* TipTap Editor Styles */
+  .tiptap {
+    @apply outline-none min-h-[400px] p-6;
+    font-family: var(--font-sans);
+  }
+
+  .tiptap p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  .tiptap h1 {
+    @apply text-3xl font-bold mb-6 text-foreground;
+  }
+
+  .tiptap h2 {
+    @apply text-2xl font-semibold mb-4 text-foreground;
+  }
+
+  .tiptap h3 {
+    @apply text-xl font-medium mb-3 text-foreground;
+  }
+
+  .tiptap ul,
+  .tiptap ol {
+    @apply mb-4 pl-6;
+  }
+
+  .tiptap ul {
+    @apply list-disc;
+  }
+
+  .tiptap ol {
+    @apply list-decimal;
+  }
+
+  .tiptap li {
+    @apply mb-1;
+  }
+
+  .tiptap blockquote {
+    @apply border-l-4 border-accent pl-4 italic my-4 text-muted-foreground;
+  }
+
+  .tiptap hr {
+    @apply my-8 border-border;
+  }
+
+  .tiptap table {
+    @apply w-full border-collapse my-4;
+  }
+
+  .tiptap th,
+  .tiptap td {
+    @apply border border-border p-3 text-left;
+  }
+
+  .tiptap th {
+    @apply bg-muted font-semibold;
+  }
+
+  .tiptap img {
+    @apply max-w-full h-auto rounded-lg my-4;
+  }
+
+  .tiptap .is-editor-empty:first-child::before {
+    @apply text-muted-foreground pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+  }
+
+  /* Page break marker */
+  .page-break {
+    @apply my-8 border-t-2 border-dashed border-muted-foreground/30 relative;
+  }
+
+  .page-break::after {
+    content: "Page Break";
+    @apply absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-3 text-xs text-muted-foreground uppercase tracking-wider;
+  }
+
+  /* Save status indicator */
+  .save-status {
+    @apply flex items-center gap-2 text-sm;
+  }
+
+  .save-status.saving {
+    @apply text-amber-500;
+  }
+
+  .save-status.saved {
+    @apply text-success;
+  }
+
+  .save-status.error {
+    @apply text-destructive;
+  }
+
+  /* TOC tree styles */
+  .toc-item {
+    @apply flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200;
+  }
+
+  .toc-item:hover {
+    @apply bg-secondary;
+  }
+
+  .toc-item.active {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .toc-item.level-1 {
+    @apply font-medium;
+  }
+
+  .toc-item.level-2 {
+    @apply pl-6 text-sm;
+  }
+
+  .toc-item.level-3 {
+    @apply pl-10 text-sm text-muted-foreground;
+  }
+
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+
+  /* Scrollable Document Editor Styles */
+  .scrollable-editor-container {
+    @apply scroll-smooth;
+  }
+
+  .section-container {
+    @apply transition-all duration-300;
+  }
+
+  .section-editor .ProseMirror {
+    @apply outline-none focus:outline-none;
+    min-height: 200px;
+    line-height: 1.75;
+    font-size: 16px;
+  }
+
+  .section-editor .ProseMirror p {
+    @apply mb-4 text-foreground leading-relaxed;
+  }
+
+  .section-editor .ProseMirror h1 {
+    @apply text-4xl font-bold mb-6 mt-8 text-foreground;
+  }
+
+  .section-editor .ProseMirror h2 {
+    @apply text-3xl font-semibold mb-5 mt-6 text-foreground;
+  }
+
+  .section-editor .ProseMirror h3 {
+    @apply text-2xl font-medium mb-4 mt-5 text-foreground;
+  }
+
+  .section-editor .ProseMirror ul,
+  .section-editor .ProseMirror ol {
+    @apply mb-4 pl-6 space-y-2;
+  }
+
+  .section-editor .ProseMirror ul {
+    @apply list-disc;
+  }
+
+  .section-editor .ProseMirror ol {
+    @apply list-decimal;
+  }
+
+  .section-editor .ProseMirror li {
+    @apply text-foreground leading-relaxed;
+  }
+
+  .section-editor .ProseMirror li p {
+    @apply mb-2;
+  }
+
+  .section-editor .ProseMirror blockquote {
+    @apply border-l-4 border-accent pl-6 py-2 my-6 italic text-muted-foreground bg-muted/30 rounded-r;
+  }
+
+  .section-editor .ProseMirror hr {
+    @apply my-8 border-t-2 border-border;
+  }
+
+  .section-editor .ProseMirror table {
+    @apply w-full border-collapse my-6 shadow-sm;
+  }
+
+  .section-editor .ProseMirror th,
+  .section-editor .ProseMirror td {
+    @apply border border-border p-3 text-left;
+  }
+
+  .section-editor .ProseMirror th {
+    @apply bg-muted font-semibold text-foreground;
+  }
+
+  .section-editor .ProseMirror td {
+    @apply bg-card;
+  }
+
+  .section-editor .ProseMirror img {
+    @apply max-w-full h-auto rounded-lg my-6 shadow-md;
+  }
+
+  .section-editor .ProseMirror code {
+    @apply bg-muted px-2 py-1 rounded text-sm font-mono;
+  }
+
+  .section-editor .ProseMirror pre {
+    @apply bg-muted p-4 rounded-lg my-4 overflow-x-auto;
+  }
+
+  .section-editor .ProseMirror pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .section-editor .ProseMirror .is-editor-empty:first-child::before {
+    @apply text-muted-foreground/50 pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+  }
+
+  /* Prose styling for better readability */
+  .prose {
+    @apply max-w-none;
+  }
+
+  .prose p {
+    @apply text-foreground;
+  }
+
+  .prose strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .prose em {
+    @apply italic;
+  }
+
+  .prose a {
+    @apply text-accent hover:underline;
+  }
+
+  /* Microsoft Word-like Page Layout */
+  .word-page {
+    width: 100%;
+    min-height: 11in;
+    @apply bg-white rounded-sm;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .word-document-page {
+    width: 100%;
+    min-height: 11in;
+    max-height: 11in;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+  }
+
+  .word-document-continuous {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .word-document-flow {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 2rem 3rem;
+    min-height: 100vh;
+    
+    /* CSS-based pagination like MS Word */
+    page-break-inside: auto;
+    orphans: 2;
+    widows: 2;
+    
+    /* Visual page breaks every 10 inches */
+    background-image: 
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(10in - 1px),
+        #e5e7eb calc(10in - 1px),
+        #e5e7eb calc(10in + 1px),
+        transparent calc(10in + 1px)
+      );
+    background-size: 100% 10in;
+  }
+
+  .word-page-container {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 2rem 3rem;
+    margin-bottom: 20px;
+    min-height: 10in;
+    page-break-after: always;
+    position: relative;
+    overflow: visible;
+  }
+
+  .page-content {
+    width: 100%;
+    min-height: 100%;
+  }
+
+  .word-page-number {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-family: 'Times New Roman', Times, serif;
+    padding: 0.25rem 0.75rem;
+    background: rgba(249, 250, 251, 0.9);
+    border-radius: 4px;
+    z-index: 10;
+  }
+
+  .word-page-content {
+    padding: 1.5in 1in 1in 1in;
+    max-height: 9.5in;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  /* Beautiful typography for professional reports */
+  .section-editor .ProseMirror {
+    @apply outline-none focus:outline-none;
+    min-height: auto;
+    line-height: 1.7;
+    font-size: 12pt;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #374151;
+    text-align: justify;
+  }
+
+  .section-editor .ProseMirror p {
+    @apply mb-4;
+    line-height: 1.8;
+    color: #374151;
+    text-indent: 1.5em;
+    margin-top: 0;
+  }
+
+  .section-editor .ProseMirror h1 {
+    @apply text-3xl font-bold mb-6 mt-8;
+    line-height: 1.3;
+    color: #1e40af;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .section-editor .ProseMirror h2 {
+    @apply text-xl font-semibold mb-4 mt-6;
+    line-height: 1.4;
+    color: #1f2937;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 8px;
+  }
+
+  .section-editor .ProseMirror h3 {
+    @apply text-lg font-medium mb-3 mt-5;
+    line-height: 1.4;
+    color: #374151;
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+
+  .section-editor .ProseMirror ul,
+  .section-editor .ProseMirror ol {
+    @apply mb-4 pl-8;
+    line-height: 1.8;
+  }
+
+  .section-editor .ProseMirror ul {
+    @apply list-disc;
+  }
+
+  .section-editor .ProseMirror ol {
+    @apply list-decimal;
+  }
+
+  .section-editor .ProseMirror li {
+    @apply mb-2;
+    line-height: 1.8;
+    color: #374151;
+    text-indent: 0;
+  }
+
+  .section-editor .ProseMirror li p {
+    @apply mb-2;
+    text-indent: 0;
+  }
+
+  .section-editor .ProseMirror blockquote {
+    @apply border-l-4 border-accent pl-4 py-1 my-3 italic text-muted-foreground;
+  }
+
+  .section-editor .ProseMirror hr {
+    @apply my-4 border-t border-border;
+  }
+
+  .section-editor .ProseMirror table {
+    @apply w-full border-collapse my-4;
+  }
+
+  .section-editor .ProseMirror th,
+  .section-editor .ProseMirror td {
+    @apply border border-border p-2 text-left;
+    font-size: 11pt;
+  }
+
+  .section-editor .ProseMirror th {
+    @apply bg-muted font-semibold text-foreground;
+  }
+
+  .section-editor .ProseMirror td {
+    @apply bg-white;
+  }
+
+  .section-editor .ProseMirror img {
+    @apply max-w-full h-auto my-3;
+  }
+
+  .section-editor .ProseMirror code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+
+  .section-editor .ProseMirror pre {
+    @apply bg-muted p-3 rounded my-3 overflow-x-auto;
+  }
+
+  .section-editor .ProseMirror pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .section-editor .ProseMirror .is-editor-empty:first-child::before {
+    @apply text-muted-foreground/40 pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+  }
+
+  /* Page break styling */
+  .page-break-marker {
+    @apply my-6 border-t-2 border-dashed border-muted-foreground/20 relative;
+    page-break-after: always;
+  }
+
+  .page-break-marker::after {
+    content: 'Page Break';
+    @apply absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-xs text-muted-foreground uppercase tracking-wider;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-background/80 backdrop-blur-lg;
+  }
+
+  .shadow-elegant {
+    box-shadow: var(--shadow-md);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn var(--transition-base) ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp var(--transition-base) ease-out;
+  }
+
+  .animate-pulse-subtle {
+    animation: pulseSubtle 2s ease-in-out infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulseSubtle {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  /* Enhanced Microsoft Word-like Editor Styling */
+  .section-editor .ProseMirror.has-focus {
+    @apply outline-none ring-2 ring-blue-500 ring-opacity-30;
+  }
+
+  .section-editor .ProseMirror img {
+    @apply cursor-pointer;
+  }
+
+  .section-editor .ProseMirror img:hover {
+    @apply ring-2 ring-blue-400;
+  }
+
+  .section-editor .ProseMirror img.ProseMirror-selectednode {
+    @apply ring-2 ring-blue-600;
+  }
+
+  /* Enhanced table styling */
+  .section-editor .ProseMirror table {
+    @apply border-collapse border border-gray-300 my-4;
+    table-layout: fixed;
+  }
+
+  .section-editor .ProseMirror th {
+    @apply bg-gray-100 font-semibold text-left p-3 border border-gray-300;
+  }
+
+  .section-editor .ProseMirror td {
+    @apply p-3 border border-gray-300 min-h-[40px];
+  }
+
+  /* Link styling */
+  .section-editor .ProseMirror a {
+    @apply text-blue-600 underline cursor-pointer;
+  }
+
+  .section-editor .ProseMirror a:hover {
+    @apply text-blue-800;
+  }
+
+  /* Highlight styling */
+  .section-editor .ProseMirror mark {
+    @apply px-1 rounded;
+  }
+
+  /* Enhanced page break styling */
+  .page-break-marker {
+    @apply my-8 border-t-2 border-dashed border-blue-300 relative;
+    page-break-after: always;
+    height: 2px;
+  }
+
+  .page-break-marker::after {
+    content: 'Page Break';
+    @apply absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4 py-1 text-xs text-blue-600 uppercase tracking-wider border border-blue-300 rounded;
+  }
+
+  /* Print styles */
+  @media print {
+    .page-break-marker {
+      page-break-after: always;
+      border: none;
+      height: 0;
+    }
+    
+    .page-break-marker::after {
+      display: none;
+    }
+    
+    .word-page {
+      box-shadow: none;
+      margin: 0;
+      width: 100%;
+    }
+  }
+}

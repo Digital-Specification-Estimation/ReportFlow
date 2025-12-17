@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum ReportStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+enum SectionType {
+  TEXT
+  TABLE
+  IMAGE
+  SIGNATURE
+  APPENDIX
+  CUSTOM
+}
+
+enum ContentFormat {
+  HTML
+  JSON
+  MARKDOWN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(VIEWER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reportsCreated Report[]         @relation("ReportCreator")
+  contentCreated SectionContent[] @relation("ContentCreator")
+  auditLogs      AuditLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Report {
+  id              String       @id @default(uuid())
+  title           String
+  clientName      String
+  propertyAddress String
+  effectiveDate   DateTime
+  status          ReportStatus @default(DRAFT)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  createdById     String
+
+  createdBy User      @relation("ReportCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  sections  Section[]
+  assets    Asset[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([effectiveDate])
+  @@map("reports")
+}
+
+model Section {
+  id         String      @id @default(uuid())
+  reportId   String
+  parentId   String?
+  slug       String
+  title      String
+  orderIndex Int
+  type       SectionType @default(TEXT)
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  report   Report           @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  parent   Section?         @relation("SectionHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Section[]        @relation("SectionHierarchy")
+  content  SectionContent[]
+  assets   Asset[]
+
+  @@unique([reportId, slug])
+  @@index([reportId])
+  @@index([parentId])
+  @@index([orderIndex])
+  @@map("sections")
+}
+
+model SectionContent {
+  id          String        @id @default(uuid())
+  sectionId   String
+  version     Int           @default(1)
+  format      ContentFormat @default(HTML)
+  content     String        @db.Text
+  createdAt   DateTime      @default(now())
+  createdById String
+
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("ContentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, version])
+  @@index([sectionId])
+  @@index([version])
+  @@map("section_contents")
+}
+
+model Asset {
+  id          String   @id @default(uuid())
+  reportId    String
+  sectionId   String?
+  fileName    String
+  storagePath String
+  mimeType    String
+  size        Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  report  Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  section Section? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+
+  @@index([reportId])
+  @@index([sectionId])
+  @@map("assets")
+}
+
+model Template {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  description  String?
+  templateJson Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([name])
+  @@map("templates")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  objectType String
+  objectId   String
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([objectType, objectId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
