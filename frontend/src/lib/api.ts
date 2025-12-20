@@ -28,16 +28,33 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { skipAuth = false, ...fetchOptions } = options;
     
+    const token = this.getToken();
+    const isDemo = token?.startsWith('demo-token');
+    
+    if (isDemo) {
+      // Mock responses for demo mode (frontend-only)
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
+      if (endpoint === '/reports/new') {
+        return { id: `demo-report-${Date.now()}`, title: 'New Report', content: '' } as T; // Blank report for Word-like creation
+      } else if (endpoint.startsWith('/templates')) {
+        return [
+          { id: 'demo-template-1', name: 'Professional Report', content: '<h1>Template Header</h1><p>Sample content</p>' },
+          { id: 'demo-template-2', name: 'Business Proposal', content: '<h1>Proposal</h1><p>Details here</p>' }
+        ] as T; // Mock templates for viewing
+      } else if (endpoint.startsWith('/reports')) {
+        return { id: endpoint.split('/')[2], title: 'Mock Report', content: '<p>Mock content</p>' } as T;
+      }
+      throw new ApiError(404, 'Mock endpoint not found in demo mode');
+    }
+    
+    // Normal backend request if not demo
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...fetchOptions.headers,
     };
 
-    if (!skipAuth) {
-      const token = this.getToken();
-      if (token) {
-        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-      }
+    if (!skipAuth && token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -51,7 +68,6 @@ class ApiClient {
       throw new ApiError(response.status, error.message || 'Request failed');
     }
 
-    // Handle empty responses
     const text = await response.text();
     if (!text) return {} as T;
     
@@ -80,6 +96,52 @@ class ApiClient {
 
   async delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+  }
+
+  async download(endpoint: string, defaultFilename?: string, options: RequestOptions = {}): Promise<void> {
+    const { skipAuth = false, ...fetchOptions } = options;
+    
+    const headers: HeadersInit = {
+      ...fetchOptions.headers,
+    };
+
+    if (!skipAuth) {
+      const token = this.getToken();
+      if (token) {
+        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...fetchOptions,
+      headers,
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Download failed');
+    }
+
+    // Try to get filename from Content-Disposition
+    let filename = defaultFilename || 'download';
+    const disposition = response.headers.get('Content-Disposition');
+    if (disposition && disposition.indexOf('attachment') !== -1) {
+      const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+      const matches = filenameRegex.exec(disposition);
+      if (matches != null && matches[1]) { 
+        filename = matches[1].replace(/['"]/g, '');
+      }
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 }
 

@@ -9,6 +9,9 @@ interface EditorStore extends EditorState {
   setIsDirty: (dirty: boolean) => void;
   setIsReadOnly: (readOnly: boolean) => void;
   updateSectionContent: (sectionId: string, content: string) => void;
+  updateReportContent: (content: string) => void;
+  updateHeader: (content: string) => void;
+  updateFooter: (content: string) => void;
   updateSectionOrder: (sections: TOCSection[]) => void;
   addSection: (parentId?: string) => void;
   removeSection: (sectionId: string) => void;
@@ -64,6 +67,33 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
     set({
       report: { ...report, sections: updateSections(report.sections) },
+      isDirty: true,
+    });
+  },
+
+  updateReportContent: (content) => {
+    const { report } = get();
+    if (!report) return;
+    set({
+      report: { ...report, content },
+      isDirty: true,
+    });
+  },
+
+  updateHeader: (content) => {
+    const { report } = get();
+    if (!report) return;
+    set({
+      report: { ...report, header: content },
+      isDirty: true,
+    });
+  },
+
+  updateFooter: (content) => {
+    const { report } = get();
+    if (!report) return;
+    set({
+      report: { ...report, footer: content },
       isDirty: true,
     });
   },

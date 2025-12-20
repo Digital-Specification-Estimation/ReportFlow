@@ -9,6 +9,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -17,54 +31,34 @@ import {
   Italic,
   Underline,
   Strikethrough,
-  Subscript,
-  Superscript,
   AlignLeft,
   AlignCenter,
   AlignRight,
   AlignJustify,
   List,
   ListOrdered,
-  Indent,
-  Outdent,
-  Undo,
-  Redo,
   Copy,
   ClipboardPaste,
   Scissors,
-  Paintbrush,
-  Type,
-  Palette,
-  Highlighter,
   Link,
   Unlink,
   Table,
   Image,
   FileImage,
-  Calendar,
-  Hash,
+  Split,
   Quote,
   Minus,
-  Split,
-  MoreHorizontal,
-  Search,
-  Replace,
   Printer,
+  Undo,
+  Redo,
   Save,
   FileText,
-  Settings,
-  ZoomIn,
-  ZoomOut,
-  Eye,
-  Grid,
-  Columns,
-  AlignStartVertical,
-  AlignEndVertical,
-  BookOpen,
-  Bookmark,
-  Navigation,
+  FileDown,
+  PanelTop,
+  PanelBottom,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEditorContext } from "./EditorContext";
 
 interface WordRibbonProps {
   editor: Editor | null;
@@ -74,9 +68,11 @@ interface WordRibbonProps {
   onPageBreak: () => void;
   onSave: () => void;
   onPrint: () => void;
+  onExportPdf: () => void;
+  onExportDocx: () => void;
 }
 
-const WordRibbon: React.FC<WordRibbonProps> = ({
+const WordRibbon = ({
   editor,
   onImageUpload,
   onImageFromUrl,
@@ -84,12 +80,41 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
   onPageBreak,
   onSave,
   onPrint,
-}) => {
+  onExportPdf,
+  onExportDocx,
+}: WordRibbonProps) => {
+  const { headerContent, setHeaderContent, footerContent, setFooterContent } =
+    useEditorContext();
   const [activeTab, setActiveTab] = useState("home");
   const [fontSize, setFontSize] = useState("11");
   const [fontFamily, setFontFamily] = useState("Times New Roman");
   const [textColor, setTextColor] = useState("#000000");
   const [highlightColor, setHighlightColor] = useState("#ffff00");
+
+  const [isHeaderDialogOpen, setIsHeaderDialogOpen] = useState(false);
+  const [isFooterDialogOpen, setIsFooterDialogOpen] = useState(false);
+  const [tempHeader, setTempHeader] = useState("");
+  const [tempFooter, setTempFooter] = useState("");
+
+  const openHeaderDialog = () => {
+    setTempHeader(headerContent);
+    setIsHeaderDialogOpen(true);
+  };
+
+  const saveHeader = () => {
+    setHeaderContent(tempHeader);
+    setIsHeaderDialogOpen(false);
+  };
+
+  const openFooterDialog = () => {
+    setTempFooter(footerContent);
+    setIsFooterDialogOpen(true);
+  };
+
+  const saveFooter = () => {
+    setFooterContent(tempFooter);
+    setIsFooterDialogOpen(false);
+  };
 
   const RibbonButton = ({
     onClick,
@@ -217,6 +242,27 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
               <Save className="h-4 w-4 mr-1" />
               Save
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <FileDown className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={onExportPdf}>
+                  Export to PDF
+                </DropdownMenuItem>
+                <Separator />
+                <DropdownMenuItem onClick={onExportDocx}>
+                  Export to Word
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="ghost"
               size="sm"
@@ -232,7 +278,7 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
 
       {/* Ribbon Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="h-auto bg-transparent border-b-0 p-0 rounded-none">
+        <TabsList className="h-9 p-0 bg-transparent border-b border-border w-full justify-start rounded-none">
           <TabsTrigger
             value="home"
             className="px-4 py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
@@ -244,30 +290,6 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
             className="px-4 py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
           >
             Insert
-          </TabsTrigger>
-          <TabsTrigger
-            value="layout"
-            className="px-4 py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-          >
-            Layout
-          </TabsTrigger>
-          <TabsTrigger
-            value="references"
-            className="px-4 py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-          >
-            References
-          </TabsTrigger>
-          <TabsTrigger
-            value="review"
-            className="px-4 py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-          >
-            Review
-          </TabsTrigger>
-          <TabsTrigger
-            value="view"
-            className="px-4 py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-          >
-            View
           </TabsTrigger>
         </TabsList>
 
@@ -291,9 +313,6 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
                   <Copy className="h-4 w-4" />
                 </RibbonButton>
               </div>
-              <RibbonButton onClick={() => {}}>
-                <Paintbrush className="h-4 w-4" />
-              </RibbonButton>
             </RibbonSection>
 
             {/* Font */}
@@ -408,12 +427,6 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
                   >
                     <ListOrdered className="h-4 w-4" />
                   </RibbonButton>
-                  <RibbonButton onClick={() => {}}>
-                    <Outdent className="h-4 w-4" />
-                  </RibbonButton>
-                  <RibbonButton onClick={() => {}}>
-                    <Indent className="h-4 w-4" />
-                  </RibbonButton>
                 </div>
                 <div className="flex gap-1">
                   <RibbonButton
@@ -487,20 +500,6 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
                 </RibbonButton>
               </div>
             </RibbonSection>
-
-            {/* Editing */}
-            <RibbonSection title="Editing">
-              <div className="flex flex-col gap-1">
-                <RibbonButton onClick={() => {}}>
-                  <Search className="h-4 w-4 mr-1" />
-                  Find
-                </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <Replace className="h-4 w-4 mr-1" />
-                  Replace
-                </RibbonButton>
-              </div>
-            </RibbonSection>
           </div>
         </TabsContent>
 
@@ -519,12 +518,9 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
 
             {/* Tables */}
             <RibbonSection title="Tables">
-              <RibbonButton
-                onClick={() => navigator.clipboard.writeText("")}
-                size="lg"
-              >
-                <ClipboardPaste className="h-5 w-5" />
-                <span className="text-xs">Paste</span>
+              <RibbonButton onClick={onTableInsert} size="lg">
+                <Table className="h-5 w-5" />
+                <span className="text-xs">Table</span>
               </RibbonButton>
             </RibbonSection>
 
@@ -560,20 +556,6 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
               </div>
             </RibbonSection>
 
-            {/* Header & Footer */}
-            <RibbonSection title="Header & Footer">
-              <div className="flex flex-col gap-1">
-                <RibbonButton onClick={() => {}}>
-                  <AlignStartVertical className="h-4 w-4 mr-1" />
-                  Header
-                </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <AlignEndVertical className="h-4 w-4 mr-1" />
-                  Footer
-                </RibbonButton>
-              </div>
-            </RibbonSection>
-
             {/* Text */}
             <RibbonSection title="Text">
               <div className="flex gap-1">
@@ -594,102 +576,68 @@ const WordRibbon: React.FC<WordRibbonProps> = ({
                 </RibbonButton>
               </div>
             </RibbonSection>
-          </div>
-        </TabsContent>
-
-        {/* Layout Tab */}
-        <TabsContent value="layout" className="mt-0 p-4 bg-muted/30">
-          <div className="flex items-start w-full">
-            <RibbonSection title="Page Setup">
+            {/* Header & Footer */}
+            <RibbonSection title="Header & Footer">
               <div className="flex gap-1">
-                <RibbonButton onClick={() => {}}>
-                  <FileText className="h-4 w-4 mr-1" />
-                  Margins
+                <RibbonButton onClick={openHeaderDialog} size="lg">
+                  <PanelTop className="h-5 w-5" />
+                  <span className="text-xs">Header</span>
                 </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <BookOpen className="h-4 w-4 mr-1" />
-                  Orientation
+                <RibbonButton onClick={openFooterDialog} size="lg">
+                  <PanelBottom className="h-5 w-5" />
+                  <span className="text-xs">Footer</span>
                 </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <Grid className="h-4 w-4 mr-1" />
-                  Size
-                </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <Columns className="h-4 w-4 mr-1" />
-                  Columns
-                </RibbonButton>
-              </div>
-            </RibbonSection>
-          </div>
-        </TabsContent>
-
-        {/* References Tab */}
-        <TabsContent value="references" className="mt-0 p-4 bg-muted/30">
-          <div className="flex items-start w-full">
-            <RibbonSection title="Table of Contents">
-              <RibbonButton onClick={() => {}}>
-                <BookOpen className="h-4 w-4 mr-1" />
-                Table of Contents
-              </RibbonButton>
-            </RibbonSection>
-            <RibbonSection title="Footnotes">
-              <div className="flex gap-1">
-                <RibbonButton onClick={() => {}}>
-                  <Bookmark className="h-4 w-4 mr-1" />
-                  Insert Footnote
-                </RibbonButton>
-              </div>
-            </RibbonSection>
-          </div>
-        </TabsContent>
-
-        {/* Review Tab */}
-        <TabsContent value="review" className="mt-0 p-4 bg-muted/30">
-          <div className="flex items-start w-full">
-            <RibbonSection title="Proofing">
-              <div className="flex gap-1">
-                <RibbonButton onClick={() => {}}>
-                  <Type className="h-4 w-4 mr-1" />
-                  Spelling
-                </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <Settings className="h-4 w-4 mr-1" />
-                  Grammar
-                </RibbonButton>
-              </div>
-            </RibbonSection>
-          </div>
-        </TabsContent>
-
-        {/* View Tab */}
-        <TabsContent value="view" className="mt-0 p-4 bg-muted/30">
-          <div className="flex items-start w-full">
-            <RibbonSection title="Views">
-              <div className="flex gap-1">
-                <RibbonButton onClick={() => {}}>
-                  <Eye className="h-4 w-4 mr-1" />
-                  Print Layout
-                </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <FileText className="h-4 w-4 mr-1" />
-                  Web Layout
-                </RibbonButton>
-              </div>
-            </RibbonSection>
-            <RibbonSection title="Zoom">
-              <div className="flex gap-1">
-                <RibbonButton onClick={() => {}}>
-                  <ZoomIn className="h-4 w-4" />
-                </RibbonButton>
-                <RibbonButton onClick={() => {}}>
-                  <ZoomOut className="h-4 w-4" />
-                </RibbonButton>
-                <span className="text-sm">100%</span>
               </div>
             </RibbonSection>
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isHeaderDialogOpen} onOpenChange={setIsHeaderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Header</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={tempHeader}
+            onChange={(e) => setTempHeader(e.target.value)}
+            placeholder="Enter header content (HTML supported)"
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsHeaderDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={saveHeader}>Save Header</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isFooterDialogOpen} onOpenChange={setIsFooterDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Footer</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={tempFooter}
+            onChange={(e) => setTempFooter(e.target.value)}
+            placeholder="Enter footer content (HTML supported)"
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsFooterDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={saveFooter}>Save Footer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
