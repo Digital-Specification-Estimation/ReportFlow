@@ -6,10 +6,10 @@ import ScrollableEditor from "@/components/editor/ScrollableEditor";
 import ExportModal from "@/components/modals/ExportModal";
 import { useEditorStore } from "@/store/editorStore";
 import { useUIStore } from "@/store/uiStore";
-import { mockReport } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
-import type { TOCSection } from "@/types";
+import type { TOCSection, Report } from "@/types";
+import { api } from "@/lib/api";
 
 const ReportEditorPage = () => {
   const { id } = useParams();
@@ -18,34 +18,90 @@ const ReportEditorPage = () => {
     setReport,
     activeSection,
     setActiveSection,
-    updateSectionContent,
+    updateReportContent,
+    updateHeader,
+    updateFooter,
     setSaveStatus,
     isReadOnly,
   } = useEditorStore();
   const { sidebarOpen, rightPanelOpen } = useUIStore();
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [tocSections, setTocSections] = useState<TOCSection[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load report data (mock for now)
-    setReport(mockReport);
-    if (mockReport.sections.length > 0) {
-      setActiveSection(mockReport.sections[0]);
-      setActiveSectionId(mockReport.sections[0].id);
-    }
-  }, [id, setReport, setActiveSection]);
+    const fetchReport = async () => {
+      if (!id) return;
+      setIsLoading(true);
+      try {
+        const data = await api.get<Report>(`/reports/${id}`);
+        setReport(data);
+        if (data.sections && data.sections.length > 0) {
+          // If we have sections, set the first one as active
+          // Note: Backend might return flat sections, we might need to process them for TOC
+          // For now, assume they are compatible or handled by ScrollableTOC
+          setTocSections(data.sections);
+          setActiveSectionId(data.sections[0].id);
+        } else if (data.content) {
+          // If we have content but no sections metadata, we rely on the editor to generate TOC
+          // So we start with empty TOC
+          setTocSections([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch report", error);
+        // Add user-facing error
+        alert(
+          "Failed to load report. Check console for details or ensure backend is running."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleContentChange = (sectionId: string, content: string) => {
-    updateSectionContent(sectionId, content);
+    fetchReport();
+  }, [id, setReport]);
+
+  const handleTOCChange = (sections: TOCSection[]) => {
+    setTocSections(sections);
+  };
+
+  const handleContentChange = (content: string) => {
+    updateReportContent(content);
+  };
+
+  const handleExportPdf = async () => {
+    if (!report || !report.id) return;
+    try {
+      await api.download(
+        `/export/report/${report.id}?format=pdf`,
+        `${report.title}.pdf`
+      );
+    } catch (error) {
+      console.error("Failed to export PDF", error);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    if (!report || !report.id) return;
+    try {
+      await api.download(
+        `/export/report/${report.id}?format=docx`,
+        `${report.title}.docx`
+      );
+    } catch (error) {
+      console.error("Failed to export Word", error);
+    }
   };
 
   const handleSave = async () => {
     setSaveStatus("saving");
+    // TODO: Implement actual API save call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setSaveStatus("saved");
   };
 
-  if (!report) {
+  if (isLoading || !report) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse flex items-center gap-2">
@@ -82,7 +138,7 @@ const ReportEditorPage = () => {
           )}
         >
           <ScrollableTOC
-            sections={report.sections}
+            sections={tocSections}
             activeSectionId={activeSectionId}
             onSelectSection={handleScrollToSection}
           />
@@ -92,14 +148,20 @@ const ReportEditorPage = () => {
         <main
           ref={editorContainerRef}
           className="flex-1 overflow-y-auto custom-scrollbar bg-background"
+          style={{ margin: "0", padding: "0 0 0 0" }}
         >
           <ScrollableEditor
             report={report}
             onContentChange={handleContentChange}
+            onHeaderChange={updateHeader}
+            onFooterChange={updateFooter}
             onSave={handleSave}
             isReadOnly={isReadOnly}
-            onActiveSectionChange={setActiveSectionId}
+            onActiveSectionChange={(id) => setActiveSectionId(id)}
             containerRef={editorContainerRef}
+            onTOCChange={handleTOCChange}
+            onExportPdf={handleExportPdf}
+            onExportDocx={handleExportDocx}
           />
         </main>
       </div>

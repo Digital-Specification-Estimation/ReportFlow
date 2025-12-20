@@ -1,4 +1,4 @@
-import { useEffect, useRef, RefObject, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -20,56 +20,129 @@ import WordRibbon from "./WordRibbon";
 import { cn } from "@/lib/utils";
 import type { Report, TOCSection } from "@/types";
 import TableAnalysisChatbot from "../chatbot/TableAnalysisChatbot";
+import { EditorProvider } from "./EditorContext";
+import { generateDefaultTemplate } from "@/utils/templateGenerator";
+import "@/styles/editor.css";
+
+// Custom Extensions
+import { CustomDocument } from "./extensions/CustomDocument";
+import { HeadingWithId } from "./extensions/HeadingWithId";
+import { Page } from "./extensions/Page";
+import { Pagination } from "./extensions/Pagination";
+import { FontSize } from "./extensions/FontSize";
 
 interface ScrollableEditorProps {
   report: Report;
-  onContentChange: (sectionId: string, content: string) => void;
+  onContentChange: (content: string) => void;
+  onHeaderChange?: (content: string) => void;
+  onFooterChange?: (content: string) => void;
   onSave: () => void;
   isReadOnly?: boolean;
   onActiveSectionChange: (sectionId: string) => void;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement>;
+  onTOCChange?: (sections: TOCSection[]) => void;
+  onExportPdf: () => void;
+  onExportDocx: () => void;
 }
 
-interface SectionEditorProps {
-  section: TOCSection;
-  onContentChange: (content: string) => void;
-  onSave: () => void;
-  isReadOnly: boolean;
-  level: number;
-  onEditorReady?: (editor: Editor) => void;
-}
-
-const SectionEditor = ({
-  section,
+const ScrollableEditor = ({
+  report,
   onContentChange,
+  onHeaderChange,
+  onFooterChange,
   onSave,
-  isReadOnly,
-  level,
-  onEditorReady,
-}: SectionEditorProps) => {
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  isReadOnly = false,
+  onActiveSectionChange,
+  containerRef,
+  onTOCChange,
+  onExportPdf,
+  onExportDocx,
+}: ScrollableEditorProps) => {
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [headerContent, setHeaderContent] = useState(report.header || "");
+  const [footerContent, setFooterContent] = useState(report.footer || "");
+
+  useEffect(() => {
+    if (report.header !== undefined) {
+      setHeaderContent(report.header);
+    }
+    if (report.footer !== undefined) {
+      setFooterContent(report.footer);
+    }
+  }, [report.header, report.footer]);
+
+  const handleHeaderChange = (content: string) => {
+    setHeaderContent(content);
+    onHeaderChange?.(content);
+  };
+
+  const handleFooterChange = (content: string) => {
+    setFooterContent(content);
+    onFooterChange?.(content);
+  };
+
+  // Prepare initial content by merging sections or using report.content
+  // We treat the document as a single flow.
+  // Memoize this to prevent infinite render loops
+  const initialContent = useMemo(() => {
+    // If we have the new full content field with actual content, use it
+    if (report.content && report.content.trim() !== "") {
+      return report.content;
+    }
+
+    // Check if sections have any actual content (not just empty sections)
+    const hasActualContent =
+      report.sections &&
+      report.sections.length > 0 &&
+      report.sections.some(
+        (section) => section.content && section.content.trim() !== ""
+      );
+
+    if (hasActualContent) {
+      // If the first section already contains pages (saved with new editor), return it.
+      // We assume if the first section has "data-type='page'", it's the full document.
+      if (
+        report.sections[0].content &&
+        report.sections[0].content.includes('data-type="page"')
+      ) {
+        return report.sections[0].content;
+      }
+
+      // Legacy content: Merge all sections
+      const merged = report.sections
+        .map((section) => {
+          // We can inject headings based on section titles if they are missing
+          const titleHtml = `<h1 id="${section.id}">${section.title}</h1>`;
+          return `${titleHtml}${section.content || ""}`;
+        })
+        .join("");
+
+      return `<div data-type="page">${merged}</div>`;
+    }
+
+    // For new documents or empty documents, use the beautiful template
+    return generateDefaultTemplate();
+  }, [report.id, report.content, report.sections]);
 
   const editor = useEditor({
     extensions: [
+      CustomDocument,
+      Page,
+      Pagination,
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3, 4, 5, 6],
-        },
+        document: false, // Disable default document node
+        heading: false, // Disable default heading
+      }),
+      HeadingWithId.configure({
+        levels: [1, 2, 3, 4, 5, 6],
       }),
       Underline,
       TextStyle,
-      FontFamily.configure({
-        types: ["textStyle"],
-      }),
-      Color.configure({
-        types: ["textStyle"],
-      }),
-      Highlight.configure({
-        multicolor: true,
-      }),
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-      }),
+      FontFamily.configure({ types: ["textStyle"] }),
+      FontSize.configure({ types: ["textStyle"] }),
+      Color.configure({ types: ["textStyle"] }),
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       Image.configure({
         inline: true,
         allowBase64: true,
@@ -109,105 +182,107 @@ const SectionEditor = ({
         placeholder: "Start writing your document...",
       }),
     ],
-    content: section.content || "<p></p>",
+    content: initialContent,
     editable: !isReadOnly,
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      onContentChange(html);
-
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      saveTimeoutRef.current = setTimeout(() => {
-        onSave();
-      }, 3000);
+      // Save the full document content
+      onContentChange(editor.getHTML());
     },
   });
 
+  // Handle TOC Updates
   useEffect(() => {
-    if (editor && onEditorReady) {
-      onEditorReady(editor);
-    }
-  }, [editor, onEditorReady]);
+    if (!editor || !onTOCChange) return;
 
-  useEffect(() => {
-    if (editor && section.content !== editor.getHTML()) {
-      editor.commands.setContent(section.content || "<p></p>");
-    }
-  }, [section.content, editor]);
+    const updateTOC = () => {
+      const rootSections: TOCSection[] = [];
+      const stack: { section: TOCSection; level: number }[] = [];
 
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
+      // Traverse document to find headings
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "heading") {
+          // We use a generated ID if not present.
+          // Note: Ideally we should persist IDs in the document.
+          const id = node.attrs.id || `heading-${pos}`;
+          const level = node.attrs.level;
 
-  if (!editor) {
-    return null;
-  }
+          const section: TOCSection = {
+            id: id,
+            title: node.textContent,
+            level: level as 1 | 2 | 3,
+            order: rootSections.length, // Logic might need adjustment for nested order
+            slug: id,
+            children: [],
+            content: "",
+          };
 
-  return (
-    <div className="section-editor">
-      <EditorContent editor={editor} />
-    </div>
-  );
-};
+          // Find parent
+          while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+            stack.pop();
+          }
 
-const ScrollableEditor = ({
-  report,
-  onContentChange,
-  onSave,
-  isReadOnly = false,
-  onActiveSectionChange,
-  containerRef,
-}: ScrollableEditorProps) => {
-  const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
-  const editorsRef = useRef<Map<string, Editor>>(new Map());
+          if (stack.length === 0) {
+            rootSections.push(section);
+          } else {
+            const parent = stack[stack.length - 1].section;
+            parent.children = parent.children || [];
+            parent.children.push(section);
+          }
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!containerRef.current) return;
-
-      const container = containerRef.current;
-      const scrollPosition = container.scrollTop + 150; // Offset for header
-
-      let currentSectionId: string | null = null;
-
-      sectionRefs.current.forEach((element, sectionId) => {
-        const rect = element.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const elementTop = rect.top - containerRect.top + container.scrollTop;
-
-        if (elementTop <= scrollPosition) {
-          currentSectionId = sectionId;
+          stack.push({ section, level });
         }
       });
 
-      if (currentSectionId) {
-        onActiveSectionChange(currentSectionId);
+      onTOCChange(rootSections);
+    };
+
+    updateTOC();
+
+    // Subscribe to updates
+    editor.on("update", updateTOC);
+
+    return () => {
+      editor.off("update", updateTOC);
+    };
+  }, [editor, onTOCChange]);
+
+  // Handle click navigation from TOC links
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleLinkClick = (event: Event) => {
+      const target = event.target as HTMLAnchorElement;
+      if (target.tagName === "A" && target.href.includes("#")) {
+        event.preventDefault();
+        const id = target.href.split("#")[1];
+        const element = document.getElementById(id);
+        if (element && containerRef.current) {
+          const container = containerRef.current;
+          const elementTop = element.offsetTop;
+          const offset = 120; // Account for sticky header and ribbon
+          container.scrollTo({
+            top: elementTop - offset,
+            behavior: "smooth",
+          });
+        }
       }
     };
 
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener("scroll", handleScroll);
-      return () => container.removeEventListener("scroll", handleScroll);
-    }
-  }, [containerRef, onActiveSectionChange]);
+    // Add event listener to the editor content
+    const editorElement = editor.view.dom;
+    editorElement.addEventListener("click", handleLinkClick);
 
-  const setSectionRef = (sectionId: string) => (el: HTMLDivElement | null) => {
-    if (el) {
-      sectionRefs.current.set(sectionId, el);
-    } else {
-      sectionRefs.current.delete(sectionId);
-    }
-  };
+    return () => {
+      editorElement.removeEventListener("click", handleLinkClick);
+    };
+  }, [editor, containerRef]);
 
-  const handleEditorReady = useCallback((sectionId: string, editor: Editor) => {
-    editorsRef.current.set(sectionId, editor);
+  // Handle Scroll to Section
+  useEffect(() => {
+    // We need to implement scroll logic based on Headings in the single editor
+    // This requires finding the H1 with the section ID.
+    // The legacy "sections" might not map 1:1 if user edited the text.
+    // But we added IDs to H1s in getMergedContent.
   }, []);
 
   const addImage = useCallback(() => {
@@ -216,45 +291,45 @@ const ScrollableEditor = ({
     input.accept = "image/*";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file && activeEditor) {
+      if (file && editor) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const src = e.target?.result as string;
-          activeEditor.chain().focus().setImage({ src }).run();
+          editor.chain().focus().setImage({ src }).run();
         };
         reader.readAsDataURL(file);
       }
     };
     input.click();
-  }, [activeEditor]);
+  }, [editor]);
 
   const addImageFromUrl = useCallback(() => {
     const url = window.prompt("Enter image URL");
-    if (url && activeEditor) {
-      activeEditor.chain().focus().setImage({ src: url }).run();
+    if (url && editor) {
+      editor.chain().focus().setImage({ src: url }).run();
     }
-  }, [activeEditor]);
+  }, [editor]);
 
   const addTable = useCallback(() => {
-    if (activeEditor) {
-      activeEditor
+    if (editor) {
+      editor
         .chain()
         .focus()
         .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
         .run();
     }
-  }, [activeEditor]);
+  }, [editor]);
 
   const addPageBreak = useCallback(() => {
-    if (activeEditor) {
-      activeEditor.chain().focus().setHardBreak().run();
-      activeEditor
-        .chain()
-        .focus()
-        .insertContent('<div class="page-break-marker"></div>')
-        .run();
+    if (editor) {
+      // With our pagination, a "Page Break" means forcing a new page.
+      // We can implement this by inserting a Page node, or a HardBreak with a specific class?
+      // Since we use 'page' nodes, we should split the current page.
+      // This is tricky from a button without custom logic.
+      // For now, let's just insert a hard break.
+      editor.chain().focus().setHardBreak().run();
     }
-  }, [activeEditor]);
+  }, [editor]);
 
   const handleSave = useCallback(() => {
     onSave();
@@ -264,281 +339,81 @@ const ScrollableEditor = ({
     window.print();
   }, []);
 
-  const renderSectionContent = (
-    section: TOCSection,
-    level: number = 1
-  ): JSX.Element => {
-    return (
-      <div
-        key={section.id}
-        id={`section-${section.id}`}
-        ref={setSectionRef(section.id)}
-        className={cn("section-container", level === 1 && "page-break-before")}
-        onFocus={() => {
-          const editor = editorsRef.current.get(section.id);
-          if (editor) setActiveEditor(editor);
-        }}
-        onClick={() => {
-          const editor = editorsRef.current.get(section.id);
-          if (editor) setActiveEditor(editor);
-        }}
-      >
-        {/* Section Title - Only show if not cover page */}
-        {section.id !== "cover-page" && (
-          <div
-            className={cn(
-              "mb-6",
-              level === 1 && "mt-0 pt-0 text-center",
-              level === 2 && "mt-8",
-              level === 3 && "mt-6"
-            )}
-          >
-            <h1
-              className={cn(
-                "text-foreground font-serif",
-                level === 1 && "text-3xl font-bold text-primary mb-6",
-                level === 2 && "text-xl font-semibold text-gray-800",
-                level === 3 && "text-lg font-medium text-muted-foreground"
-              )}
-              style={{
-                fontFamily:
-                  level === 1
-                    ? "'Georgia', 'Times New Roman', serif"
-                    : "'Inter', sans-serif",
-                letterSpacing: level === 1 ? "1px" : "0.5px",
-                textTransform: level === 1 ? "uppercase" : "none",
-              }}
-            >
-              {section.title}
-            </h1>
-            {level === 1 && (
-              <div
-                style={{
-                  width: "120px",
-                  height: "3px",
-                  background: "linear-gradient(90deg, #1e40af, #3b82f6)",
-                  margin: "0 auto 40px auto",
-                }}
-              ></div>
-            )}
-          </div>
-        )}
-
-        {/* Section Editor */}
-        <SectionEditor
-          section={section}
-          onContentChange={(content) => onContentChange(section.id, content)}
-          onSave={onSave}
-          isReadOnly={isReadOnly}
-          level={level}
-          onEditorReady={(editor) => handleEditorReady(section.id, editor)}
-        />
-
-        {/* Render children inline within the same page context */}
-        {section.children && section.children.length > 0 && (
-          <div className="mt-4">
-            {section.children.map((child) =>
-              renderSectionContent(child, level + 1)
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const [paginatedContent, setPaginatedContent] = useState<JSX.Element[]>([]);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
-
-  useEffect(() => {
-    const createHeightBasedPages = () => {
-      const pageHeight = 10 * 96; // 10 inches in pixels (96 DPI)
-      const pageMargin = 64; // 2rem top + 2rem bottom
-      const availableHeight = pageHeight - pageMargin;
-
-      const pages: JSX.Element[] = [];
-      let pageNumber = 1;
-
-      // First, create cover page as page 1
-      const coverSection = report.sections.find(
-        (section) => section.id === "cover-page"
-      );
-      if (coverSection) {
-        pages.push(
-          <div key={`page-${pageNumber}`} className="word-page-container">
-            <div className="page-content">
-              <div dangerouslySetInnerHTML={{ __html: coverSection.content }} />
-            </div>
-            <div className="absolute bottom-4 right-4 text-sm text-gray-500 font-mono">
-              Page {pageNumber}
-            </div>
-          </div>
-        );
-        pageNumber++;
-      }
-
-      // Then process all other sections (excluding cover page)
-      const contentSections = report.sections.filter(
-        (section) => section.id !== "cover-page"
-      );
-      const allElements: JSX.Element[] = [];
-
-      contentSections.forEach((section) => {
-        allElements.push(
-          <div key={`${section.id}-title`} className="section-element">
-            <h2 className="text-2xl font-bold text-blue-800 mb-4 text-center">
-              {section.title}
-            </h2>
-          </div>
-        );
-
-        allElements.push(
-          <div key={`${section.id}-content`} className="section-element">
-            <div dangerouslySetInnerHTML={{ __html: section.content }} />
-          </div>
-        );
-
-        if (section.children) {
-          section.children.forEach((child) => {
-            allElements.push(
-              <div key={`${child.id}-subsection`} className="section-element">
-                {renderSectionContent(child, 2)}
-              </div>
-            );
-          });
-        }
-      });
-
-      // Distribute content elements across pages with consistent height
-      let currentPageElements: JSX.Element[] = [];
-      let estimatedHeight = 0;
-
-      const estimateElementHeight = (element: JSX.Element) => {
-        const key = element.key as string;
-        if (key?.includes("title")) return 80; // Section titles
-        if (key?.includes("content")) return 200; // Section content
-        if (key?.includes("subsection")) return 150; // Subsections
-        return 100; // Default
-      };
-
-      allElements.forEach((element, index) => {
-        const elementHeight = estimateElementHeight(element);
-
-        // Check if adding this element would exceed page height
-        if (
-          estimatedHeight + elementHeight > availableHeight &&
-          currentPageElements.length > 0
-        ) {
-          // Create new page with consistent height
-          pages.push(
-            <div key={`page-${pageNumber}`} className="word-page-container">
-              <div className="page-content">{currentPageElements}</div>
-              <div className="absolute bottom-4 right-4 text-sm text-gray-500 font-mono">
-                Page {pageNumber}
-              </div>
-            </div>
-          );
-
-          // Start new page
-          currentPageElements = [element];
-          estimatedHeight = elementHeight;
-          pageNumber++;
-        } else {
-          // Add to current page
-          currentPageElements.push(element);
-          estimatedHeight += elementHeight;
-        }
-
-        // Handle last element
-        if (
-          index === allElements.length - 1 &&
-          currentPageElements.length > 0
-        ) {
-          pages.push(
-            <div key={`page-${pageNumber}`} className="word-page-container">
-              <div className="page-content">{currentPageElements}</div>
-              <div className="absolute bottom-4 right-4 text-sm text-gray-500 font-mono">
-                Page {pageNumber}
-              </div>
-            </div>
-          );
-        }
-      });
-
-      setPaginatedContent(pages);
-    };
-
-    createHeightBasedPages();
-  }, [report.sections]);
-
   const handleAddTableToReport = (tableHtml: string, analysis: string) => {
-    // Find the current active section or default to a suitable section
-    const targetSectionId = "market-data"; // You can make this dynamic based on user selection
-    const targetSection = report.sections.find((s) => s.id === targetSectionId);
-
-    if (targetSection) {
-      const newContent = `${targetSection.content}\n\n<div class="chatbot-added-content">\n<h4>AI-Generated Analysis</h4>\n${analysis}\n\n${tableHtml}\n</div>`;
-      onContentChange(targetSectionId, newContent);
+    if (editor) {
+      editor
+        .chain()
+        .focus()
+        .insertContent(
+          `
+            <div class="chatbot-added-content">
+                <h4>AI-Generated Analysis</h4>
+                ${analysis}
+                ${tableHtml}
+            </div>
+          `
+        )
+        .run();
     }
   };
 
-  const renderPages = (): JSX.Element[] => {
-    return paginatedContent;
-  };
-
   return (
-    <div className="scrollable-editor-container bg-muted/30 min-h-full w-full">
-      {/* Microsoft Word-style Ribbon */}
-      {!isReadOnly && (
-        <WordRibbon
-          editor={activeEditor}
-          onImageUpload={addImage}
-          onImageFromUrl={addImageFromUrl}
-          onTableInsert={addTable}
-          onPageBreak={addPageBreak}
-          onSave={handleSave}
-          onPrint={handlePrint}
-        />
-      )}
+    <EditorProvider
+      value={{
+        headerContent,
+        setHeaderContent: handleHeaderChange,
+        footerContent,
+        setFooterContent: handleFooterChange,
+      }}
+    >
+      <div className="scrollable-editor-container bg-gray-100 min-h-full w-full flex flex-col">
+        {!isReadOnly && (
+          <WordRibbon
+            editor={editor}
+            onImageUpload={addImage}
+            onImageFromUrl={addImageFromUrl}
+            onTableInsert={addTable}
+            onPageBreak={addPageBreak}
+            onSave={handleSave}
+            onPrint={handlePrint}
+            onExportDocx={onExportDocx}
+            onExportPdf={onExportPdf}
+          />
+        )}
 
-      {/* Document Pages Container */}
-      <div className="w-full px-4 py-4">
-        <div className="word-document-continuous">
-          {/* Render real page containers */}
-          {renderPages()}
+        <div className="w-full" style={{ padding: "0", margin: "0" }}>
+          <EditorContent editor={editor} className="word-editor-content" />
         </div>
-      </div>
 
-      {/* Floating Chatbot Button */}
-      {!isReadOnly && (
-        <button
-          onClick={() => setIsChatbotOpen(true)}
-          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-200 z-40"
-          title="AI Table Analysis Assistant"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {!isReadOnly && (
+          <button
+            onClick={() => setIsChatbotOpen(true)}
+            className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-200 z-40"
+            title="AI Table Analysis Assistant"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
-        </button>
-      )}
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+          </button>
+        )}
 
-      {/* Table Analysis Chatbot */}
-      <TableAnalysisChatbot
-        isOpen={isChatbotOpen}
-        onClose={() => setIsChatbotOpen(false)}
-        onAddTableToReport={handleAddTableToReport}
-      />
-    </div>
+        <TableAnalysisChatbot
+          isOpen={isChatbotOpen}
+          onClose={() => setIsChatbotOpen(false)}
+          onAddTableToReport={handleAddTableToReport}
+        />
+      </div>
+    </EditorProvider>
   );
 };
 

@@ -28,6 +28,9 @@ export interface Report {
   updatedAt: string;
   version: number;
   sections: TOCSection[];
+  content?: string;
+  header?: string;
+  footer?: string;
 }
 
 // TOC & Section Types

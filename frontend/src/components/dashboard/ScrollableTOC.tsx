@@ -24,14 +24,18 @@ interface TOCItemProps {
   onAddChild: (parentId: string) => void;
 }
 
-const TOCItem = ({
+interface TOCItemWithNumberProps extends TOCItemProps {
+  section: TOCSection & { displayNumber?: string };
+}
+
+const TOCItemWithNumber = ({
   section,
   isActive,
   onSelect,
   onRename,
   onDelete,
   onAddChild,
-}: TOCItemProps) => {
+}: TOCItemWithNumberProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(section.title);
@@ -112,13 +116,18 @@ const TOCItem = ({
             <span
               onClick={() => onSelect(section.id)}
               className={cn(
-                "flex-1 text-sm truncate transition-all",
+                "flex-1 text-sm truncate transition-all flex items-center gap-2",
                 section.level === 1 && "font-semibold",
                 section.level === 2 && "font-medium",
                 section.level === 3 && "text-sm",
                 isActive && "font-semibold"
               )}
             >
+              {section.displayNumber && (
+                <span className="text-xs font-mono text-muted-foreground min-w-[2.5rem]">
+                  {section.displayNumber}
+                </span>
+              )}
               {section.title}
             </span>
 
@@ -169,7 +178,7 @@ const TOCItem = ({
       {hasChildren && isExpanded && (
         <div className="animate-slide-down">
           {section.children!.map((child) => (
-            <TOCItem
+            <TOCItemWithNumber
               key={child.id}
               section={child}
               isActive={false}
@@ -198,9 +207,34 @@ const ScrollableTOC = ({
 }: ScrollableTOCProps) => {
   const { renameSection, removeSection, addSection } = useEditorStore();
 
-  const renderTOCItems = (sections: TOCSection[]): JSX.Element[] => {
+  // Generate hierarchical numbering for sections
+  const addNumberingToSections = (
+    sections: TOCSection[],
+    parentNumber = ""
+  ): TOCSection[] => {
+    return sections.map((section, index) => {
+      const sectionNumber = parentNumber
+        ? `${parentNumber}.${index + 1}`
+        : `${index + 1}.0`;
+      const numberedSection = {
+        ...section,
+        displayNumber: sectionNumber,
+        children: section.children
+          ? addNumberingToSections(
+              section.children,
+              sectionNumber.replace(".0", "")
+            )
+          : undefined,
+      };
+      return numberedSection;
+    });
+  };
+
+  const numberedSections = addNumberingToSections(sections);
+
+  const renderTOCItems = (sections: any[]): JSX.Element[] => {
     return sections.map((section) => (
-      <TOCItem
+      <TOCItemWithNumber
         key={section.id}
         section={section}
         isActive={activeSectionId === section.id}
@@ -231,7 +265,7 @@ const ScrollableTOC = ({
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-        {renderTOCItems(sections)}
+        {renderTOCItems(numberedSections)}
       </div>
     </div>
   );
